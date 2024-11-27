@@ -1,9 +1,9 @@
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 class SpellChecker:
-    def __init__(self, local_path):
-        self.tokenizer = T5Tokenizer.from_pretrained(local_path)
-        self.model = T5ForConditionalGeneration.from_pretrained(local_path)
+    def __init__(self, model_path="./models/t5_base_spellchecker_model"):
+        self.tokenizer = T5Tokenizer.from_pretrained(model_path)
+        self.model = T5ForConditionalGeneration.from_pretrained(model_path)
 
     def correct(self, input_text):
         # Preprocess the input text
