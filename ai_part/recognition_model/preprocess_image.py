@@ -119,31 +119,21 @@ def crop_lines(image, output_path, padding=5, margin=10):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Invert colors to make text white on black background
-    inverted = cv2.bitwise_not(gray)
-
-    # Detect the global horizontal extent of text
-    vertical_projection = np.sum(inverted, axis=0)
-    text_x = np.where(vertical_projection > 0)[0]
-    if len(text_x) > 0:
-        min_x = np.min(text_x)
-        max_x = np.max(text_x)
-    else:
-        min_x, max_x = 0, image.shape[1]
-
-    # Expand text horizontally to the full extent
-    for i in range(inverted.shape[0]):
-        if np.sum(inverted[i, :]) > 0:  # If there's text on this row
-            inverted[i, min_x:max_x] = 255  # Ensure text spans the full width
-
-    # Apply horizontal projection to detect text lines
-    projection = np.sum(inverted, axis=1)
-
-    # Threshold to detect significant text regions
-    threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
-    line_regions = projection > threshold
-
-    # Apply horizontal projection to detect text lines
     # inverted = cv2.bitwise_not(gray)
+    #
+    # # Detect the global horizontal extent of text
+    # vertical_projection = np.sum(inverted, axis=0)
+    # text_x = np.where(vertical_projection > 0)[0]
+    # if len(text_x) > 0:
+    #     min_x = np.min(text_x)
+    #     max_x = np.max(text_x)
+    # else:
+    #     min_x, max_x = 0, image.shape[1]
+    #
+    # # Expand text horizontally to the full extent
+    # for i in range(inverted.shape[0]):
+    #     if np.sum(inverted[i, :]) > 0:  # If there's text on this row
+    #         inverted[i, min_x:max_x] = 255  # Ensure text spans the full width
     #
     # # Apply horizontal projection to detect text lines
     # projection = np.sum(inverted, axis=1)
@@ -151,6 +141,16 @@ def crop_lines(image, output_path, padding=5, margin=10):
     # # Threshold to detect significant text regions
     # threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
     # line_regions = projection > threshold
+
+    # Apply horizontal projection to detect text lines
+    inverted = cv2.bitwise_not(gray)
+
+    # Apply horizontal projection to detect text lines
+    projection = np.sum(inverted, axis=1)
+
+    # Threshold to detect significant text regions
+    threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
+    line_regions = projection > threshold
 
     # Detect line start and end indices
     line_indices = []
@@ -187,7 +187,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
             else:
                 filtered_indices.append((start, end))
 
-        elif i > 0 and i < len(line_indices) - 1:  # Merge with neighbors
+        elif i > 0 and i < len(line_indices) - 1 and start - filtered_indices[len(filtered_indices) - 1][0] < padding:  # Merge with neighbors
             merged_start = filtered_indices[len(filtered_indices) - 1][0]
             merged_end = end
             filtered_indices[len(filtered_indices) - 1] = (merged_start, merged_end)
@@ -241,8 +241,10 @@ def crop_lines(image, output_path, padding=5, margin=10):
 
 
 # Example usage
-output = remove_background("tests", "test_many_lines_blue_ink.jpg", "output_crop", "output_many_lines_blue_ink.png")
-crop_lines(output, "output_crop/cropped3")
+# output = remove_background("tests", "test_many_lines_lines.jpg", "output_crop", "output_many_lines_lines.png")
+# crop_lines(output, "output_crop/croppep2")
+output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
+crop_lines(output, "output_crop/croppep4")
 
 # output = remove_background("tests", "test_many_lines.jpg", "output_crop", "output_many_lines.png")
 # crop_lines(output, "output_crop/cropped")
