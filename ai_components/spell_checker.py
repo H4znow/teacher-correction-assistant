@@ -20,6 +20,9 @@ class SpellChecker:
         )
         corrected_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return corrected_text
+    
+    def name(self):
+        return "T5 Spell Checker"
 
 if __name__ == "__main__":
     # Path to the locally saved model

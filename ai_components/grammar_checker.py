@@ -22,6 +22,9 @@ class GrammarChecker:
         total_params = sum(p.numel() for p in self.model.parameters())
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         return f"Model Summary:\n- Total Parameters: {total_params:,}\n- Trainable Parameters: {trainable_params:,}"
+    
+    def name(self):
+        return "T5 Grammar Checker"
 
 if __name__ == "__main__":
     # Initialize the grammar checker

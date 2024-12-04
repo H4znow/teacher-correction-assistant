@@ -8,6 +8,8 @@ transformers = "*"
 torch = "*"
 sentencepiece = "*"
 protobuf = "*"
+autocorrect = "*"
+rouge = "*"
 
 [dev-packages]
 
