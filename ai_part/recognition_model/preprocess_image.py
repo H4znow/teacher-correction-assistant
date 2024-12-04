@@ -73,126 +73,38 @@ def remove_background(input_path, input_name, output_path, output_name):
     return output
 
 
-def detect_skew(image):
+def crop_horizontal_and_vertical(image):
     """
-    Detect the angle of skew in the image using the Hough Line Transform.
+    Crop the image by removing white space on all sides (top, bottom, left, right).
 
     Args:
-        image (numpy.ndarray): The preprocessed image.
+        image (numpy.ndarray): The input image with handwriting on a white background.
 
     Returns:
-        float: The angle by which the image is skewed.
+        numpy.ndarray: The cropped image.
     """
-    # Convert to grayscale and invert colors
+    # Convert to grayscale and threshold
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
 
-    # Detect edges
-    edges = cv2.Canny(binary, 50, 150, apertureSize=3)
+    # Invert binary image
+    binary_inv = cv2.bitwise_not(binary)
 
-    # Perform Hough Line Transform
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
-
-    # Calculate the angle of the lines
-    angles = []
-    if lines is not None:
-        for rho, theta in lines[:, 0]:
-            angle = np.rad2deg(theta) - 90
-            angles.append(angle)
-
-    # Calculate the median angle
-    if angles:
-        return np.median(angles)
-    return 0.0  # Assume no rotation if no lines are detected
-
-
-def rotate_image(image, angle):
-    """
-    Rotate the image to correct the skew.
-
-    Args:
-        image (numpy.ndarray): The image to rotate.
-        angle (float): The angle to rotate the image.
-
-    Returns:
-        numpy.ndarray: The rotated image.
-    """
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-
-    # Calculate the rotation matrix
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-
-    # Perform the rotation
-    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    return rotated
-
-# def crop_lines(image, output_path, padding=5):
-#     """
-#     Crop the text lines from the given image and save each line as a separate image,
-#     with adjustments to include letter tails and caps.
-#
-#     Args:
-#         image (numpy.ndarray): The input image with text on a white background.
-#         output_path (str): The directory to save the cropped line images.
-#         padding (int): Number of pixels to extend above and below detected lines.
-#     """
-#     # Convert to grayscale
-#     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#
-#     # Invert colors to make text white on black background
-#     inverted = cv2.bitwise_not(gray)
-#
-#     # Apply horizontal projection to detect text lines
-#     projection = np.sum(inverted, axis=1)
-#
-#     # Threshold to detect significant text regions
-#     threshold = np.max(projection) * 0.1  # 10% of the maximum projection value
-#     line_regions = projection > threshold
-#
-#     # Detect line start and end indices
-#     line_indices = []
-#     start = None
-#     for i, val in enumerate(line_regions):
-#         if val and start is None:
-#             start = i
-#         elif not val and start is not None:
-#             line_indices.append((start, i))
-#             start = None
-#
-#     # Handle case where the last line reaches the image bottom
-#     if start is not None:
-#         line_indices.append((start, len(line_regions)))
-#
-#     # Expand lines to include letter caps/tails and merge overlapping regions
-#     expanded_indices = []
-#     for start, end in line_indices:
-#         start = max(0, start - padding)
-#         end = min(image.shape[0], end + padding)
-#         if expanded_indices and expanded_indices[-1][1] >= start:  # Merge overlapping lines
-#             expanded_indices[-1] = (expanded_indices[-1][0], end)
-#         else:
-#             expanded_indices.append((start, end))
-#
-#     # Create output directory if not exists
-#     os.makedirs(output_path, exist_ok=True)
-#
-#     # Crop and save each line
-#     for i, (start, end) in enumerate(expanded_indices):
-#         cropped_line = image[start:end, :]  # Crop the entire width
-#         line_image_path = os.path.join(output_path, f"line_{i + 1}.png")
-#         cv2.imwrite(line_image_path, cropped_line)
-#         print(f"Saved: {line_image_path}")
-
-# Example usage
-# image = cv2.imread('path_to_image.png')
-# crop_lines(image, 'output_directory')
+    # Find non-white region using contours
+    coords = cv2.findNonZero(binary_inv)  # Get all non-zero points
+    if coords is not None:
+        x, y, w, h = cv2.boundingRect(coords)  # Get bounding box
+        cropped = image[y:y+h, x:x+w]  # Crop the region
+        return cropped
+    else:
+        return image  # If no handwriting is found, return the original image
 
 
 def crop_lines(image, output_path, padding=5, margin=10):
     """
     Crop the text lines from the given image, considering letter tails and caps,
-    and add a white margin around each line.
+    and add a white margin around each line, with additional processing to ignore
+    and merge small lines.
 
     Args:
         image (numpy.ndarray): The input image with text on a white background.
@@ -201,10 +113,27 @@ def crop_lines(image, output_path, padding=5, margin=10):
         margin (int): White space to add above and below each cropped line.
     """
     # Convert to grayscale
+    image =crop_horizontal_and_vertical(image)
+    cv2.imwrite(f"{output_path}/initial_crop.png", image)
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Invert colors to make text white on black background
     inverted = cv2.bitwise_not(gray)
+
+    # Detect the global horizontal extent of text
+    vertical_projection = np.sum(inverted, axis=0)
+    text_x = np.where(vertical_projection > 0)[0]
+    if len(text_x) > 0:
+        min_x = np.min(text_x)
+        max_x = np.max(text_x)
+    else:
+        min_x, max_x = 0, image.shape[1]
+
+    # Expand text horizontally to the full extent
+    for i in range(inverted.shape[0]):
+        if np.sum(inverted[i, :]) > 0:  # If there's text on this row
+            inverted[i, min_x:max_x] = 255  # Ensure text spans the full width
 
     # Apply horizontal projection to detect text lines
     projection = np.sum(inverted, axis=1)
@@ -212,6 +141,16 @@ def crop_lines(image, output_path, padding=5, margin=10):
     # Threshold to detect significant text regions
     threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
     line_regions = projection > threshold
+
+    # Apply horizontal projection to detect text lines
+    # inverted = cv2.bitwise_not(gray)
+    #
+    # # Apply horizontal projection to detect text lines
+    # projection = np.sum(inverted, axis=1)
+    #
+    # # Threshold to detect significant text regions
+    # threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
+    # line_regions = projection > threshold
 
     # Detect line start and end indices
     line_indices = []
@@ -227,9 +166,36 @@ def crop_lines(image, output_path, padding=5, margin=10):
     if start is not None:
         line_indices.append((start, len(line_regions)))
 
+    # Calculate the average vertical size of lines
+    line_heights = [end - start for start, end in line_indices]
+    avg_height = np.mean(line_heights)
+
+    # Filter out lines that are less than half the average height
+    filtered_indices = []
+    merge_previous_indices = None
+
+    for i, (start, end) in enumerate(line_indices):
+        line_height = end - start
+        if line_height >= avg_height / 2:  # Keep lines that are not too small
+            if merge_previous_indices and start - merge_previous_indices[1] < padding:
+                # prev_start, prev_end = line_indices[i - 1]
+                # next_start, next_end = line_indices[i]
+                merged_start = merge_previous_indices[0]
+                merged_end = end
+                filtered_indices.append((merged_start, merged_end))
+                merge_previous_indices = None
+            else:
+                filtered_indices.append((start, end))
+
+        elif i > 0 and i < len(line_indices) - 1:  # Merge with neighbors
+            merged_start = filtered_indices[len(filtered_indices) - 1][0]
+            merged_end = end
+            filtered_indices[len(filtered_indices) - 1] = (merged_start, merged_end)
+            merge_previous_indices = (start, end)
+
     # Expand lines to include letter caps/tails and add white margin
     expanded_indices = []
-    for start, end in line_indices:
+    for start, end in filtered_indices:
         # Expand by padding
         start = max(0, start - padding)
         end = min(image.shape[0], end + padding)
@@ -244,16 +210,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
         else:
             line_min, line_max = 0, image.shape[1]
 
-        # Merge overlapping lines
-        if expanded_indices and expanded_indices[-1][1] >= start:
-            expanded_indices[-1] = (
-                expanded_indices[-1][0],
-                end,
-                expanded_indices[-1][2],
-                expanded_indices[-1][3],
-            )
-        else:
-            expanded_indices.append((start, end, line_min, line_max))
+        expanded_indices.append((start, end, line_min, line_max))
 
     # Create output directory if not exists
     os.makedirs(output_path, exist_ok=True)
@@ -283,7 +240,9 @@ def crop_lines(image, output_path, padding=5, margin=10):
         print(f"Saved: {line_image_path}")
 
 
-
 # Example usage
-output = remove_background("tests", "test_many_lines.jpg", "output_crop", "output_many_lines.png")
-crop_lines(output, "output_crop/cropped")
+output = remove_background("tests", "test_many_lines_blue_ink.jpg", "output_crop", "output_many_lines_blue_ink.png")
+crop_lines(output, "output_crop/cropped3")
+
+# output = remove_background("tests", "test_many_lines.jpg", "output_crop", "output_many_lines.png")
+# crop_lines(output, "output_crop/cropped")
