@@ -26,7 +26,7 @@ def load_image_as_bytes(path, file_name):
     return cv2.imread(full_path)
 
 
-def apply_clean(image):
+def apply_clean_full(image):
     """Applies Gaussian blur, adaptive thresholding, and removes grid lines from an image."""
 
     # Convert to grayscale
@@ -40,7 +40,7 @@ def apply_clean(image):
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
     horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
 
-    # Step 6: Detect vertical lines
+    # # Step 6: Detect vertical lines
     vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
     vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
 
@@ -57,8 +57,49 @@ def apply_clean(image):
     contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for contour in contours:
         area = cv2.contourArea(contour)
-        if area < 50:  # Threshold for small noise (adjust based on your image)
-            cv2.drawContours(cleaned_binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
+        if area < 10:  # Threshold for small noise (adjust based on your image)
+            cv2.drawContours(binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
+
+    # Step 11: Restore handwriting onto a white background
+    handwriting_mask = binary > 0
+    output = np.ones_like(image) * 255  # Create a white background
+    output[handwriting_mask] = image[handwriting_mask]
+
+    return output
+
+def apply_clean(image):
+    """Applies Gaussian blur, adaptive thresholding, and removes grid lines from an image."""
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply Gaussian Blur
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # Apply adaptive thresholding to binarize the image
+    binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+
+    # # Step 6: Detect vertical lines
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
+    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+
+    # Step 7: Combine horizontal and vertical lines into one mask
+    grid_mask = cv2.add(horizontal_lines, vertical_lines)
+
+    # Step 8: Invert the grid mask
+    grid_removed = cv2.bitwise_not(grid_mask)
+
+    # Step 9: Remove the grid from the original binary image
+    cleaned_binary = cv2.bitwise_and(binary, binary, mask=grid_removed)
+
+    # Step 10: Remove small noise using contour filtering
+    # contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # for contour in contours:
+    #     area = cv2.contourArea(contour)
+    #     if area < 10:  # Threshold for small noise (adjust based on your image)
+    #         cv2.drawContours(binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
 
     # Step 11: Restore handwriting onto a white background
     handwriting_mask = cleaned_binary > 0
@@ -164,7 +205,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
             else:
                 filtered_indices.append((start, end))
 
-        elif i > 0 and i < len(line_indices) - 1 and start - filtered_indices[len(filtered_indices) - 1][0] < padding:  # Merge with neighbors
+        elif i > 0 and i < len(line_indices) - 1 and (len(filtered_indices) > 0 and start - filtered_indices[len(filtered_indices) - 1][0] < padding):  # Merge with neighbors
             merged_start = filtered_indices[len(filtered_indices) - 1][0]
             merged_end = end
             filtered_indices[len(filtered_indices) - 1] = (merged_start, merged_end)
@@ -199,7 +240,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
         cropped_line = image[start:end, :]  # Crop the entire width
 
         # ADD BACKGROUND REMOVAL
-        cropped_line = apply_clean(cropped_line)
+        cropped_line = apply_clean_full(cropped_line)
         cropped_line = crop_horizontal_and_vertical(cropped_line)
 
         # Add horizontal margin
