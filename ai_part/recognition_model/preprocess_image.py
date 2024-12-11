@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import cv2
@@ -8,31 +9,26 @@ from PIL import Image
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def ensure_directory(path):
+    """Ensure a directory exists."""
+    os.makedirs(path, exist_ok=True)
+
 def save_image(image, path, file_name):
     full_dir_path = os.path.join(ROOT_DIR, path)
-    os.makedirs(full_dir_path, exist_ok=True)  # Create only the directory
+    ensure_directory(full_dir_path)
     full_file_path = os.path.join(full_dir_path, file_name)
     image.save(full_file_path)
 
-
 def load_image_as_bytes(path, file_name):
     full_path = os.path.join(ROOT_DIR, path, file_name)
-    if os.path.exists(full_path):
-        return cv2.imread(full_path)
-    else:
+    if not os.path.exists(full_path):
         raise FileNotFoundError(f"The file does not exist: {full_path}")
+    return cv2.imread(full_path)
 
 
 def apply_clean(image):
-    """
-    Applies Gaussian blur and adaptive thresholding to an image.
+    """Applies Gaussian blur, adaptive thresholding, and removes grid lines from an image."""
 
-    Args:
-        image (numpy.ndarray): The input grayscale image.
-
-    Returns:
-        numpy.ndarray: The binary image after thresholding.
-    """
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -73,53 +69,11 @@ def apply_clean(image):
 
 
 def remove_background(input_path, input_name, output_path, output_name):
-    # Step 1: Read the image
     image = load_image_as_bytes(input_path, input_name)
-
-    # Step 2: Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Apply Gaussian Blur
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Apply adaptive thresholding to binarize the image
-    binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-
-    # Step 5: Detect horizontal lines
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-
-    # Step 6: Detect vertical lines
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
-    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
-
-    # Step 7: Combine horizontal and vertical lines into one mask
-    grid_mask = cv2.add(horizontal_lines, vertical_lines)
-
-    # Step 8: Invert the grid mask
-    grid_removed = cv2.bitwise_not(grid_mask)
-
-    # Step 9: Remove the grid from the original binary image
-    cleaned_binary = cv2.bitwise_and(binary, binary, mask=grid_removed)
-
-    # Step 10: Remove small noise using contour filtering
-    contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area < 50:  # Threshold for small noise (adjust based on your image)
-            cv2.drawContours(cleaned_binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
-
-    # Step 11: Restore handwriting onto a white background
-    handwriting_mask = cleaned_binary > 0
-    output = np.ones_like(image) * 255  # Create a white background
-    output[handwriting_mask] = image[handwriting_mask]
-
-    # Convert the result to a PIL image
-    result_image = Image.fromarray(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
-
-    # Save the result
+    processed_image = apply_clean(image)
+    result_image = Image.fromarray(cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB))
     save_image(result_image, output_path, output_name)
-    return output
+    return processed_image
 
 
 def crop_horizontal_and_vertical(image):
@@ -133,7 +87,8 @@ def crop_horizontal_and_vertical(image):
         numpy.ndarray: The cropped image.
     """
     # Convert to grayscale and threshold
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) > 2 else image
+
     _, binary = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
 
     # Invert binary image
@@ -145,8 +100,7 @@ def crop_horizontal_and_vertical(image):
         x, y, w, h = cv2.boundingRect(coords)  # Get bounding box
         cropped = image[y:y+h, x:x+w]  # Crop the region
         return cropped
-    else:
-        return image  # If no handwriting is found, return the original image
+    return image  # If no handwriting is found, return the original image
 
 
 def crop_lines(image, output_path, padding=5, margin=10):
@@ -163,33 +117,8 @@ def crop_lines(image, output_path, padding=5, margin=10):
     """
     # Convert to grayscale
     image = crop_horizontal_and_vertical(image)
-    cv2.imwrite(f"{output_path}/initial_crop.png", image)
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Invert colors to make text white on black background
-    # inverted = cv2.bitwise_not(gray)
-    #
-    # # Detect the global horizontal extent of text
-    # vertical_projection = np.sum(inverted, axis=0)
-    # text_x = np.where(vertical_projection > 0)[0]
-    # if len(text_x) > 0:
-    #     min_x = np.min(text_x)
-    #     max_x = np.max(text_x)
-    # else:
-    #     min_x, max_x = 0, image.shape[1]
-    #
-    # # Expand text horizontally to the full extent
-    # for i in range(inverted.shape[0]):
-    #     if np.sum(inverted[i, :]) > 0:  # If there's text on this row
-    #         inverted[i, min_x:max_x] = 255  # Ensure text spans the full width
-    #
-    # # Apply horizontal projection to detect text lines
-    # projection = np.sum(inverted, axis=1)
-    #
-    # # Threshold to detect significant text regions
-    # threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
-    # line_regions = projection > threshold
 
     # Apply horizontal projection to detect text lines
     inverted = cv2.bitwise_not(gray)
@@ -223,12 +152,11 @@ def crop_lines(image, output_path, padding=5, margin=10):
     filtered_indices = []
     merge_previous_indices = None
 
+    # Merge lines which are too small (wrong crop)
     for i, (start, end) in enumerate(line_indices):
         line_height = end - start
         if line_height >= avg_height / 2:  # Keep lines that are not too small
             if merge_previous_indices and start - merge_previous_indices[1] < padding:
-                # prev_start, prev_end = line_indices[i - 1]
-                # next_start, next_end = line_indices[i]
                 merged_start = merge_previous_indices[0]
                 merged_end = end
                 filtered_indices.append((merged_start, merged_end))
@@ -261,8 +189,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
 
         expanded_indices.append((start, end, line_min, line_max))
 
-    # Create output directory if not exists
-    os.makedirs(output_path, exist_ok=True)
+    ensure_directory(output_path)
 
     # Crop and save each line
     for i, (start, end, min_x, max_x) in enumerate(expanded_indices):
@@ -276,30 +203,38 @@ def crop_lines(image, output_path, padding=5, margin=10):
         cropped_line = crop_horizontal_and_vertical(cropped_line)
 
         # Add horizontal margin
-        horizontal_margin = 10  # Adjust margin on both sides
-
         cropped_line = cv2.copyMakeBorder(
             cropped_line,
-            top=horizontal_margin,
-            bottom=horizontal_margin,
+            top=margin,
+            bottom=margin,
             left=padding,
             right=padding,
             borderType=cv2.BORDER_CONSTANT,
-            value=[255, 255, 255],  # White margin
+            value=[255, 255, 255],
         )
 
         # Save the cropped line
         line_image_path = os.path.join(output_path, f"line_{i + 1}.png")
 
-
         cv2.imwrite(line_image_path, cropped_line)
         print(f"Saved: {line_image_path}")
 
-# Example usage
-# output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
-# crop_lines(output, "output_crop/croppep6")
-# output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
-# crop_lines(output, "output_crop/croppep4")
+def main():
+    parser = argparse.ArgumentParser(description="Remove background and crop lines from an image.")
 
-# output = remove_background("tests", "test_many_lines.jpg", "output_crop", "output_many_lines.png")
-# crop_lines(output, "output_crop/cropped")
+    parser.add_argument("--input_folder", type=str, required=True, help="Path to the folder containing input files.")
+    parser.add_argument("--input_image", type=str, required=True, help="Filename of the input image.")
+    parser.add_argument("--output_crop_folder", type=str, required=True, help="Path to save the cropped images.")
+    parser.add_argument("--output_image", type=str, required=True, help="Path to save the cleaned output image.")
+    parser.add_argument("--output_lines_folder", type=str, required=True, help="Path to save cropped lines.")
+
+    args = parser.parse_args()
+
+    # Run remove_background
+    cropped_output = remove_background(args.input_folder, args.input_image, args.output_crop_folder, args.output_image)
+
+    # Run crop_lines
+    crop_lines(cropped_output, args.output_lines_folder)
+
+if __name__ == "__main__":
+    main()
