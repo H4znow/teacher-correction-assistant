@@ -23,6 +23,55 @@ def load_image_as_bytes(path, file_name):
         raise FileNotFoundError(f"The file does not exist: {full_path}")
 
 
+def apply_clean(image):
+    """
+    Applies Gaussian blur and adaptive thresholding to an image.
+
+    Args:
+        image (numpy.ndarray): The input grayscale image.
+
+    Returns:
+        numpy.ndarray: The binary image after thresholding.
+    """
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply Gaussian Blur
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # Apply adaptive thresholding to binarize the image
+    binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+
+    # Step 6: Detect vertical lines
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
+    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+
+    # Step 7: Combine horizontal and vertical lines into one mask
+    grid_mask = cv2.add(horizontal_lines, vertical_lines)
+
+    # Step 8: Invert the grid mask
+    grid_removed = cv2.bitwise_not(grid_mask)
+
+    # Step 9: Remove the grid from the original binary image
+    cleaned_binary = cv2.bitwise_and(binary, binary, mask=grid_removed)
+
+    # Step 10: Remove small noise using contour filtering
+    contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < 50:  # Threshold for small noise (adjust based on your image)
+            cv2.drawContours(cleaned_binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
+
+    # Step 11: Restore handwriting onto a white background
+    handwriting_mask = cleaned_binary > 0
+    output = np.ones_like(image) * 255  # Create a white background
+    output[handwriting_mask] = image[handwriting_mask]
+
+    return output
+
+
 def remove_background(input_path, input_name, output_path, output_name):
     # Step 1: Read the image
     image = load_image_as_bytes(input_path, input_name)
@@ -30,10 +79,10 @@ def remove_background(input_path, input_name, output_path, output_name):
     # Step 2: Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Step 3: Apply Gaussian Blur
+    # Apply Gaussian Blur
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Step 4: Apply adaptive thresholding to binarize the image
+    # Apply adaptive thresholding to binarize the image
     binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
     # Step 5: Detect horizontal lines
@@ -113,7 +162,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
         margin (int): White space to add above and below each cropped line.
     """
     # Convert to grayscale
-    image =crop_horizontal_and_vertical(image)
+    image = crop_horizontal_and_vertical(image)
     cv2.imwrite(f"{output_path}/initial_crop.png", image)
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -222,29 +271,35 @@ def crop_lines(image, output_path, padding=5, margin=10):
         end = min(image.shape[0], end + margin)
         cropped_line = image[start:end, :]  # Crop the entire width
 
+        # ADD BACKGROUND REMOVAL
+        cropped_line = apply_clean(cropped_line)
+        cropped_line = crop_horizontal_and_vertical(cropped_line)
+
         # Add horizontal margin
         horizontal_margin = 10  # Adjust margin on both sides
+
         cropped_line = cv2.copyMakeBorder(
             cropped_line,
             top=horizontal_margin,
             bottom=horizontal_margin,
-            left=0,
-            right=0,
+            left=padding,
+            right=padding,
             borderType=cv2.BORDER_CONSTANT,
             value=[255, 255, 255],  # White margin
         )
 
         # Save the cropped line
         line_image_path = os.path.join(output_path, f"line_{i + 1}.png")
+
+
         cv2.imwrite(line_image_path, cropped_line)
         print(f"Saved: {line_image_path}")
 
-
 # Example usage
-# output = remove_background("tests", "test_many_lines_lines.jpg", "output_crop", "output_many_lines_lines.png")
-# crop_lines(output, "output_crop/croppep2")
-output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
-crop_lines(output, "output_crop/croppep4")
+# output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
+# crop_lines(output, "output_crop/croppep6")
+# output = remove_background("tests", "test_many_lines_with_blank_black_white.jpg", "output_crop", "output_many_lines_with_blank_black_white.png")
+# crop_lines(output, "output_crop/croppep4")
 
 # output = remove_background("tests", "test_many_lines.jpg", "output_crop", "output_many_lines.png")
 # crop_lines(output, "output_crop/cropped")

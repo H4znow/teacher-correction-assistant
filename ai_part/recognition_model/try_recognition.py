@@ -48,7 +48,7 @@ def load_images_from_directory(directory):
 
     return images
 
-images = load_images_from_directory(os.path.join(ROOT_DIR, "output_crop/cropped1"))
+images = load_images_from_directory(os.path.join(ROOT_DIR, "output_crop/croppep6"))
 
 # Load processor and model
 processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-handwritten')
