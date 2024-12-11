@@ -238,3 +238,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Example of run: python process_image.py --input_folder tests --input_image test_many_lines_with_blank_black_white.jpg --output_crop_folder output_crop --output_image output_many_lines_with_blank_black_white.png --output_lines_folder output_crop/cleaned6
