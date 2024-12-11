@@ -25,6 +25,15 @@ class GrammarChecker:
     
     def name(self):
         return "T5 Grammar Checker"
+    
+    def get_model(self):
+        return self.model
+    
+    def get_tokenizer(self):
+        return self.tokenizer
+    
+    def tokenize(self, text):
+        return self.tokenizer.tokenize(text)
 
 if __name__ == "__main__":
     # Initialize the grammar checker
