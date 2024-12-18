@@ -1,40 +1,53 @@
-# App script for the AI components
-from spell_checker import SpellChecker
-from grammar_checker import GrammarChecker
+from model_frameworks.grammar import GrammarModel
+from model_frameworks.spelling import SpellingModel
 
-def main():
-    # Initialize verbose mode
-    verbose = True
+class Corrector:
+    def __init__(self):
+        print("Initializing Corrector...")
+        self.grammar_corrector = GrammarModel(quantization="int8")
+        self.spelling_corrector = SpellingModel()
+    
+    def correct_text(self, text: str) -> str:
+        print(f"Original text: {text}")
+        
+        # Step 1: Correct spelling
+        corrected_spelling = self.correct_spelling(text)
+        print(f"After spelling correction: {corrected_spelling}")
+        
+        # Step 2: Correct grammar
+        corrected_text = self.correct_grammar(corrected_spelling)
+        print(f"After grammar correction: {corrected_text}")
+        
+        return corrected_text
 
-    # Input sentence
-    input_sentence = input("Enter a sentence to correct spelling and grammar: ")
+    def correct_grammar(self, text: str) -> str:
+        try:
+            return self.grammar_corrector.correct(text)
+        except Exception as e:
+            print(f"Error in grammar correction: {e}")
+            return text
 
-    # Verbose output: original sentence
-    if verbose:
-        print("\nStep 1: Input Sentence")
-        print(f"Original Sentence: {input_sentence}")
+    def correct_spelling(self, text: str) -> str:
+        try:
+            return self.spelling_corrector.correct(text)
+        except Exception as e:
+            print(f"Error in spelling correction: {e}")
+            return text
 
-    # Step 2: Spelling Correction
-    spell_checker = SpellChecker()  # Path to your spell-check model
-    corrected_spelling = spell_checker.correct(input_sentence)
-
-    # Verbose output: after spelling correction
-    if verbose:
-        print("\nStep 2: Spelling Correction")
-        print(f"Corrected Spelling: {corrected_spelling}")
-
-    # Step 3: Grammar Correction
-    grammar_checker = GrammarChecker()  # Path to your grammar-check model
-    corrected_grammar = grammar_checker.correct(corrected_spelling)
-
-    # Verbose output: after grammar correction
-    if verbose:
-        print("\nStep 3: Grammar Correction")
-        print(f"Corrected Grammar: {corrected_grammar}")
-
-    # Final Output
-    print("\nFinal Corrected Sentence:")
-    print(corrected_grammar)
 
 if __name__ == "__main__":
-    main()
+    # Example usage
+    corrector = Corrector()
+
+    # Test sentences
+    sentences = [
+        "He are moving here.",
+        "I am doin fine. How is yu?",
+        "They is happy with ther new home.",
+    ]
+
+    print("\nStarting correction process...\n")
+    for sentence in sentences:
+        corrected = corrector.correct_text(sentence)
+        print(f"Final Output: {corrected}")
+        print("-----------\n")
