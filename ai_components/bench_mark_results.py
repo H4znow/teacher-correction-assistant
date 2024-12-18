@@ -3,6 +3,7 @@ from spell_checker2 import SpellChecker as SpellChecker2
 from spell_checker3 import SpellChecker as SpellChecker3
 from grammar_checker import GrammarChecker as GrammarChecker1
 from grammar_checker2 import GrammarChecker as GrammarChecker2
+import torch
 import time
 from rouge import Rouge  # Install with pip install rouge
 
@@ -29,6 +30,21 @@ class ResultFormatter:
         print(f"  Max Time: {max_time:.4f} seconds")
         print(f"  Average ROUGE-L Score: {average_score:.4f}")
         print("==========\n")
+
+class QuantizedGrammarChecker(GrammarChecker1):
+    def __init__(self, model_path="./models/prithivida_grammar_error_correcter_v1", quantized_model_path=None):
+        super().__init__(model_path)
+        if quantized_model_path:
+            # Load the quantized model state dictionary
+            quantized_state_dict = torch.load(quantized_model_path)
+            self.model.load_state_dict(quantized_state_dict)
+            # Reapply quantization
+            self.model = torch.quantization.quantize_dynamic(
+                self.model,
+                {torch.nn.Linear},
+                dtype=torch.qint8
+            )
+            print(f"Quantized model loaded from {quantized_model_path}.")
 
 
 def evaluate_with_rouge(predictions, references):
@@ -119,32 +135,37 @@ reference_grammar = [
 ]
 
 # Benchmark spell checkers
-spell_checkers = [SpellChecker1(), SpellChecker2(), SpellChecker3()]
-spell_recap = time_execution(spell_checkers, spelling_error_sentences, reference_spelling, checker_type="Spell Checker")
+# spell_checkers = [SpellChecker1(), SpellChecker2(), SpellChecker3()]
+# spell_recap = time_execution(spell_checkers, spelling_error_sentences, reference_spelling, checker_type="Spell Checker")
 
 # Benchmark grammar checkers
-grammar_checkers = [GrammarChecker1(), GrammarChecker2()]
+grammar_checkers = [GrammarChecker1(), 
+                GrammarChecker1(model_path="./models/prithivida_grammar_error_correcter_v1_fp16"),
+                QuantizedGrammarChecker(
+                    model_path="./models/prithivida_grammar_error_correcter_v1",
+                    quantized_model_path="./models/quantized_grammar_checker_int8.pth",
+                )]
 grammar_recap = time_execution(grammar_checkers, grammar_error_sentences, reference_grammar, checker_type="Grammar Checker")
 
 # Display results
 formatter = ResultFormatter()
 
-print("Spell Checker Benchmark:")
-for checker_name, values in spell_recap.items():
-    formatter.display_results(
-        checker_name,
-        spelling_error_sentences,
-        values["corrections"],
-        reference_spelling,
-        values["rouge_scores"],
-    )
-    formatter.display_summary(
-        checker_name,
-        values["average_time"],
-        values["min_time"],
-        values["max_time"],
-        values["average_score"],
-    )
+# print("Spell Checker Benchmark:")
+# for checker_name, values in spell_recap.items():
+#     formatter.display_results(
+#         checker_name,
+#         spelling_error_sentences,
+#         values["corrections"],
+#         reference_spelling,
+#         values["rouge_scores"],
+#     )
+#     formatter.display_summary(
+#         checker_name,
+#         values["average_time"],
+#         values["min_time"],
+#         values["max_time"],
+#         values["average_score"],
+#     )
 
 print("Grammar Checker Benchmark:")
 for checker_name, values in grammar_recap.items():

@@ -6,6 +6,8 @@ class GrammarChecker:
         # Load the locally saved model and tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(model_path)
         self.model = T5ForConditionalGeneration.from_pretrained(model_path)
+        # True if ends with fp16
+        self.quantized_model = model_path.endswith("fp16")
 
     def correct(self, text):
         # Preprocess the input text
@@ -24,10 +26,15 @@ class GrammarChecker:
         return f"Model Summary:\n- Total Parameters: {total_params:,}\n- Trainable Parameters: {trainable_params:,}"
     
     def name(self):
+        if self.quantized_model:
+            return "T5 Quantized Grammar Checker"
         return "T5 Grammar Checker"
     
     def get_model(self):
         return self.model
+    
+    def set_model(self, model):
+        self.model = model
     
     def get_tokenizer(self):
         return self.tokenizer
@@ -35,9 +42,18 @@ class GrammarChecker:
     def tokenize(self, text):
         return self.tokenizer.tokenize(text)
 
+    def quantize(self):
+        # Apply dynamic quantization
+        self.model = torch.quantization.quantize_dynamic(
+            self.model,
+            {torch.nn.Linear},  # Specify which layers to quantize
+            dtype=torch.qint8  # Use 8-bit integer quantization
+        )
+        print("Model quantized successfully.")
+
 if __name__ == "__main__":
     # Initialize the grammar checker
-    grammar_checker = GrammarChecker()
+    grammar_checker = GrammarChecker(model_path="./models/prithivida_grammar_error_correcter_v1_fp16")
 
     # Print the summary of the model
     print(grammar_checker.summary())
