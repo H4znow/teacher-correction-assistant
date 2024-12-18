@@ -5,7 +5,6 @@ from grammar_checker import GrammarChecker as GrammarChecker1
 from grammar_checker2 import GrammarChecker as GrammarChecker2
 import torch
 import time
-from transformers import T5ForConditionalGeneration, T5Tokenizer
 from rouge import Rouge  # Install with pip install rouge
 
 
@@ -144,34 +143,35 @@ reference_grammar = [
 ]
 
 # Benchmark spell checkers
-# spell_checkers = [SpellChecker1(), SpellChecker2(), SpellChecker3()]
-# spell_recap = time_execution(spell_checkers, spelling_error_sentences, reference_spelling, checker_type="Spell Checker")
+spell_checkers = [SpellChecker1(), SpellChecker2(), SpellChecker3()]
+spell_recap = time_execution(spell_checkers, spelling_error_sentences, reference_spelling, checker_type="Spell Checker")
 
 # Benchmark grammar checkers
 grammar_checkers = [GrammarChecker1(), 
                 GrammarChecker1(model_path="./models/prithivida_grammar_error_correcter_v1_fp16"),
-                QuantizedGrammarChecker()]
+                QuantizedGrammarChecker(), 
+                GrammarChecker2()]
 grammar_recap = time_execution(grammar_checkers, grammar_error_sentences, reference_grammar, checker_type="Grammar Checker")
 
 # Display results
 formatter = ResultFormatter()
 
-# print("Spell Checker Benchmark:")
-# for checker_name, values in spell_recap.items():
-#     formatter.display_results(
-#         checker_name,
-#         spelling_error_sentences,
-#         values["corrections"],
-#         reference_spelling,
-#         values["rouge_scores"],
-#     )
-#     formatter.display_summary(
-#         checker_name,
-#         values["average_time"],
-#         values["min_time"],
-#         values["max_time"],
-#         values["average_score"],
-#     )
+print("Spell Checker Benchmark:")
+for checker_name, values in spell_recap.items():
+    formatter.display_results(
+        checker_name,
+        spelling_error_sentences,
+        values["corrections"],
+        reference_spelling,
+        values["rouge_scores"],
+    )
+    formatter.display_summary(
+        checker_name,
+        values["average_time"],
+        values["min_time"],
+        values["max_time"],
+        values["average_score"],
+    )
 
 print("Grammar Checker Benchmark:")
 for checker_name, values in grammar_recap.items():
