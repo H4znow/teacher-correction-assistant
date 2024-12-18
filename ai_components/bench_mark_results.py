@@ -5,6 +5,7 @@ from grammar_checker import GrammarChecker as GrammarChecker1
 from grammar_checker2 import GrammarChecker as GrammarChecker2
 import torch
 import time
+from transformers import T5ForConditionalGeneration, T5Tokenizer
 from rouge import Rouge  # Install with pip install rouge
 
 
@@ -31,20 +32,28 @@ class ResultFormatter:
         print(f"  Average ROUGE-L Score: {average_score:.4f}")
         print("==========\n")
 
-class QuantizedGrammarChecker(GrammarChecker1):
-    def __init__(self, model_path="./models/prithivida_grammar_error_correcter_v1", quantized_model_path=None):
-        super().__init__(model_path)
-        if quantized_model_path:
-            # Load the quantized model state dictionary
-            quantized_state_dict = torch.load(quantized_model_path)
-            self.model.load_state_dict(quantized_state_dict)
-            # Reapply quantization
-            self.model = torch.quantization.quantize_dynamic(
-                self.model,
-                {torch.nn.Linear},
-                dtype=torch.qint8
-            )
-            print(f"Quantized model loaded from {quantized_model_path}.")
+class QuantizedGrammarChecker:
+    def __init__(self, quantized_model_path="./models/quantized_grammar_checker_int8.pth"):
+        # Load the quantized model directly
+        self.model = torch.load(quantized_model_path)
+        self.model.eval()  # Ensure the model is in evaluation mode
+
+        gc = GrammarChecker1()
+        gc.set_model(self.model)
+
+        self.tokenizer = gc.get_tokenizer()
+
+        print(f"Quantized model loaded from {quantized_model_path}.")
+
+
+    def correct(self, text):
+        input_text = "gec: " + text
+        input_ids = self.tokenizer.encode(input_text, return_tensors="pt")
+        outputs = self.model.generate(input_ids, max_length=512)
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    def name(self):
+        return "Quantized Int Grammar Checker"
 
 
 def evaluate_with_rouge(predictions, references):
@@ -141,10 +150,7 @@ reference_grammar = [
 # Benchmark grammar checkers
 grammar_checkers = [GrammarChecker1(), 
                 GrammarChecker1(model_path="./models/prithivida_grammar_error_correcter_v1_fp16"),
-                QuantizedGrammarChecker(
-                    model_path="./models/prithivida_grammar_error_correcter_v1",
-                    quantized_model_path="./models/quantized_grammar_checker_int8.pth",
-                )]
+                QuantizedGrammarChecker()]
 grammar_recap = time_execution(grammar_checkers, grammar_error_sentences, reference_grammar, checker_type="Grammar Checker")
 
 # Display results
