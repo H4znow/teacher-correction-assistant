@@ -95,11 +95,11 @@ def apply_clean(image):
     cleaned_binary = cv2.bitwise_and(binary, binary, mask=grid_removed)
 
     # Step 10: Remove small noise using contour filtering
-    # contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # for contour in contours:
-    #     area = cv2.contourArea(contour)
-    #     if area < 10:  # Threshold for small noise (adjust based on your image)
-    #         cv2.drawContours(binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
+    contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < 10:  # Threshold for small noise (adjust based on your image)
+            cv2.drawContours(cleaned_binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
 
     # Step 11: Restore handwriting onto a white background
     handwriting_mask = cleaned_binary > 0
