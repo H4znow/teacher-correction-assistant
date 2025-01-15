@@ -34,43 +34,33 @@
 
         <!-- Text extraction section -->
         <div id="extraction-section" style="display: none;">
-            <div id="text-section" ></div>
-            <div id="fulltext-section" ></div>
+            <div id="text-section"></div>
+            <div id="fulltext-section"></div>
 
             <div>
-                <button id="syntax-check">Check Syntax</button>
+                <button id="syntax-check">Check Syntax and Grammar</button>
             </div>
         </div>
 
-        <!-- Syntax check section -->
-        <div id="syntax-section" style="display: none;">
-            <table>
-                <tr>
-                    <th>Original Text</th>
-                    <th>Syntax Fixed Text</th>
-                </tr>
-                <tr>
-                    <td id="syntax-original"></td>
-                    <td id="syntax-fixed"></td>
-                </tr>
-            </table>
+        <!-- Syntax and Grammar check section (combined) -->
+        <div id="check-section" style="display: none;">
             <div>
-                <button id="grammar-check">Check Grammar</button>
+                <table>
+                    <tr>
+                        <th>Original Text</th>
+                        <th>Syntax Fixed Text</th>
+                        <th>Grammar Fixed Text</th>
+                    </tr>
+                    <tr>
+                        <td id="check-original"></td>
+                        <td id="check-syntax-fixed"></td>
+                        <td id="check-grammar-fixed"></td>
+                    </tr>
+                </table>
             </div>
-        </div>
-
-        <!-- Grammar check section -->
-        <div id="grammar-section" style="display: none;">
-            <table>
-                <tr>
-                    <th>Original Text</th>
-                    <th>Grammar Fixed Text</th>
-                </tr>
-                <tr>
-                    <td id="grammar-original"></td>
-                    <td id="grammar-fixed"></td>
-                </tr>
-            </table>
+            <div>
+                <button id="try-again">Start From the beginning!</button>
+            </div>
         </div>
     </div>
 
