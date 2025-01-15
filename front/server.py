@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, jsonify, url_for
 import os
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+# print(ROOT_DIR)
 os.chdir(ROOT_DIR)
 app = Flask(__name__)
 
@@ -16,14 +17,15 @@ def preprocess_image(image_path):
 
     # Example: Assuming images are already created or you process them here
     # Get all image files from the directory
-    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir(line_images_dir) if
+    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir(os.path.join(ROOT_DIR, line_images_dir)) if
                     filename.endswith('.png')]
+    print(lines_images)
 
     return processed_image, lines_images
 
 def extract_text(lines):
     # Placeholder: Extract text from lines
-    return "Extracted text from lines."
+    return ["Extracted text from lines.", "Extracted text from lines 2.", "Extracted text from lines 3.", "Extracted text from lines 4."]
 
 def syntax_check(text):
     # Placeholder: Perform syntax check and return two versions of the text
@@ -48,7 +50,7 @@ def check_image_quality():
         return jsonify({"status": "preprocessed", "image": preprocessed_image, "lines": lines})
     return jsonify({"status": "redo"})
 
-@app.route('/check-preprocessing', methods=['POST'])
+@app.route('/extract-text', methods=['POST'])
 def check_preprocessing():
     decision = request.json.get('decision')
     if decision == 'yes':
