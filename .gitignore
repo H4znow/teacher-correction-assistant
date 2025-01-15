@@ -1,0 +1,7 @@
+venv/
+venv/*
+
+.ropeproject/
+.ropeproject/*
+
+lib/__pycache__/
