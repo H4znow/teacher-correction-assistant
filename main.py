@@ -20,8 +20,13 @@ def image2text(images, device: torch.device):
     model = OCRModel(device, model_path = ocr_model_path)
     return model.extract_text(images)
 
+def img_preprocessing(img):
+    # TODO Add img preprocessing
+    return img
+
 def check_first_step(device: torch.device):
     img = load_images()
+    img = img_preprocessing(img)
     result = image2text(img, device=device)
     print("Here is the transcription of the text in the image provided: ")
     print("\n".join(result))
