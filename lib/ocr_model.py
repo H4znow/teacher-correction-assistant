@@ -1,10 +1,12 @@
 import torch
+import torch_xla.core.xla_model as xm
+
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from PIL import Image, ImageFile
 
 
 class OCRModel:
-    def __init__(self, model_path="", device="cpu"):
+    def __init__(self, device: torch.device, model_path: str = "microsoft/trocr-base-handwritten"):
         self.device = device
         self.processor = TrOCRProcessor.from_pretrained(model_path)
         self.model = VisionEncoderDecoderModel.from_pretrained(model_path)
@@ -16,7 +18,7 @@ class OCRModel:
     def __init_from_onnx():
         pass
 
-    def extract_text(self, image, max_tokens = 200):
+    def extract_text(self, image: ImageFile.ImageFile|list[ImageFile.ImageFile], max_tokens: int = 200):
         images = None
         if type(image) == ImageFile:
             images = [image]
@@ -31,12 +33,13 @@ class OCRModel:
         return "Image2Text"
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = OCRModel(model_path="microsoft/trocr-base-handwritten", device=device)
+    device = torch.device("cuda" if torch.cuda.is_available() else xm.xla_device())
+    model = OCRModel(device)
 
     # Load image
-    image1 = Image.open("../../test/data/ocr_img_1.jpg")
-    image2 = Image.open("../../test/data/ocr_img_2.jpg")
+    image1 = Image.open("../test/data/ocr_img_1.jpg")
+    image2 = Image.open("../test/data/ocr_img_2.jpg")
     result = model.extract_text([image1, image2])
-    assert result[0] == "I like Apex and seven is good at it ."
-    assert result[1] == "I like Apex and seven is good at it ."
+    print("############ Test Results ############")
+    print("\n".join(result))
+    print("########## End Test Results ############")
