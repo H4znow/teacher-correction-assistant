@@ -1,4 +1,5 @@
 import torch
+import torch_xla.core.xla_model as xm
 
 from lib.ocr_model import OCRModel
 from lib.grammar_checker import GrammarChecker
@@ -13,11 +14,13 @@ def load_images():
     image2 = Image.open("./test/data/ocr_img_2.jpg")
     return [image1, image2]
 
-def image2text(images, device):
-    model = OCRModel(model_path="microsoft/trocr-base-handwritten", device=device)
+def image2text(images, device: torch.device):
+    # TODO: Replace path with the quantized path
+    ocr_model_path = "microsoft/trocr-base-handwritten"
+    model = OCRModel(device, model_path = ocr_model_path)
     return model.extract_text(images)
 
-def check_first_step(device):
+def check_first_step(device: torch.device):
     img = load_images()
     result = image2text(img, device=device)
     print("Here is the transcription of the text in the image provided: ")
@@ -28,7 +31,7 @@ def check_first_step(device):
     return result, answer
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else xm.xla_device())
 # TODO: Replace by the path to the quantized models
 spell_checker_path = "Bhuvana/t5-base-spellchecker"
 # TODO: Replace by the path to the quantized models
@@ -38,8 +41,8 @@ extracted_text, answer = check_first_step(device=device)
 while answer == "n":
     extracted_text, answer = check_first_step(device=device)
 
-spell_checker = SpellChecker(model_path=spell_checker_path)
-grammar_checker = GrammarChecker(model_path=grammar_checker_path)
+spell_checker = SpellChecker(device, model_path=spell_checker_path)
+grammar_checker = GrammarChecker(device, model_path=grammar_checker_path)
 result = []
 
 # Correct spelling and grammar errors
