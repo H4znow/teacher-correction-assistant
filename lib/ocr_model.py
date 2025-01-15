@@ -1,7 +1,7 @@
 import torch
 import torch_xla.core.xla_model as xm
 
-from model import Model
+from .model import Model
 from PIL import Image, ImageFile
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 

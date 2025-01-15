@@ -5,3 +5,5 @@ venv/*
 .ropeproject/*
 
 lib/__pycache__/
+
+models/

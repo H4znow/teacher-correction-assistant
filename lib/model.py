@@ -30,3 +30,6 @@ class Model(ABC):
 
     def set_model(self, model):
         self.model = model
+
+    def quantize_model(self):
+        self.model.half()
