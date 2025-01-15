@@ -1,14 +1,5 @@
 # TEACHER CORRECTION ASSISTANCE
 
-<<<<<<< HEAD
-## Dependencies Intallation
-
-All the dependencies are provided in the requirements.txt.
-To install them launch the command
-`pip install -r requirements.txt`
-
-This project have been successfully test with python 3.10.5
-=======
 
 # Requirements
 
@@ -72,4 +63,3 @@ py .\ai_components\spell_checker.py
   Min Time: 0.5774 seconds \
   Max Time: 11.3091 seconds \
   Average ROUGE-L Score: 0.7732 
->>>>>>> image_preprocess
