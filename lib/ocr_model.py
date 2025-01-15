@@ -4,6 +4,7 @@ import torch_xla.core.xla_model as xm
 from .model import Model
 from PIL import Image, ImageFile
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+from rope.contrib.autoimport import models
 
 
 class OCRModel(Model):
@@ -14,13 +15,13 @@ class OCRModel(Model):
         self.model = VisionEncoderDecoderModel.from_pretrained(model_path)
         self.model = self.model.to(device=device)
 
-    def __init_from_pytorch():
-        pass
-
-    def __init_from_onnx():
-        pass
-
-    def extract_text(self, image: ImageFile.ImageFile|list[ImageFile.ImageFile], max_tokens: int = 200):
+    def extract_text(self, image: ImageFile.ImageFile|list[ImageFile.ImageFile], max_tokens: int = 200) -> str:
+        """
+            Extract Text from image using model
+            :param image: an image or a list of image
+            :param max_tokens
+            :return the text extracted
+        """
         images = None
         if type(image) == ImageFile:
             images = [image]
@@ -40,8 +41,8 @@ if __name__ == "__main__":
     # print(model.model_name)
 
     # Load image
-    image1 = Image.open("test/data/ocr_img_1.jpg")
-    image2 = Image.open("test/data/ocr_img_2.jpg")
+    image1 = Image.open("test/ocr_data/ocr_img_1.jpg")
+    image2 = Image.open("test/ocr_data/ocr_img_2.jpg")
     result = model.extract_text([image1, image2])
     print("############ Test Results ############")
     print("\n".join(result))

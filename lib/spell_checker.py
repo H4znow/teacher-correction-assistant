@@ -1,21 +1,26 @@
 from autocorrect import Speller
 
-class SpellingModel():
+class SpellChecker():
     def __init__(self, lang='', fast=False):
-        # Fast mode is faster (micro seconds), however words with double typos won't be corrected 
+        # Fast mode is faster (micro seconds), however words with double typos won't be corrected
         if lang == '':
             self.speller = Speller(fast=fast)
         else:
             self.speller = Speller(lang=lang, fast=fast)
 
-    def correct(self, input_text):
+    def correct(self, input_text: str) -> str:
+        """
+        Correct spelling error of text using the model
+        :param input_text: text to correct
+        :return the text with the spell errors corrected
+        """
         return self.speller(input_text)
-    
+
     def name(self):
         return "Autocorrect Spell Checker"
-    
+
 if __name__ == "__main__":
-    speller = SpellingModel()
+    speller = SpellChecker()
 
     sentences_with_spelling_errors = [
         "She is goinng to the libary to borrow a bok.",

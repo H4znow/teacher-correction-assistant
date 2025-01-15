@@ -36,7 +36,12 @@ class GrammarChecker(Model):
         self.model = self.model.to(device=device)
 
 
-    def correct(self, text: str):
+    def correct(self, text: str) -> str:
+        """
+            Correct grammar error of text using the model
+            :param text: text to correct
+            :return the text with the grammmar errors corrected
+        """
         if not text.strip():
             return "Input text is empty."
 
