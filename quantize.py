@@ -2,8 +2,8 @@ import os
 import torch
 
 from lib.grammar_checker import GrammarChecker
+from lib.image2text_recognition import OCRModel
 from lib.model import Model
-from lib.ocr_model import OCRModel
 
 
 def dynamic_quantization_model(model, dtype: torch.dtype):

@@ -11,48 +11,52 @@ from lib.spell_checker import SpellChecker
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT_DIR)
+IMAGES_FROM_FRONT = "static/images"
+IMAGES_FOR_LIB = os.path.join("../front", IMAGES_FROM_FRONT)
+PROCESSED_IMAGES = os.path.join(IMAGES_FROM_FRONT, "processed")
+PROCESSED_IMAGES_LIB = os.path.join("../front", PROCESSED_IMAGES)
+LINES_DIR = os.path.join(PROCESSED_IMAGES, "lines")
+LINES_DIR_LIB = os.path.join("../front", LINES_DIR)
+
 app = Flask(__name__)
 device = torch.device("cpu")
 
-def clean_lines_dir(directory_path = "../front/static/images/processed/lines"):
+def clean_lines_dir(directory_path = LINES_DIR):
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
 
 def crop_with_projection(projection_value):
     clean_lines_dir()
-    line_images_dir = "static/images/processed/lines"
+    line_images_dir = LINES_DIR
 
-    image = load_image_as_bytes("../front/static/images/processed", "preprocessed_image.png")
-    crop_lines(image, "../front/static/images/processed/lines", projection_value=projection_value)
-    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir("../front/static/images/processed/lines") if
+    image = load_image_as_bytes(PROCESSED_IMAGES_LIB, "preprocessed_image.png")
+    crop_lines(image, LINES_DIR_LIB, projection_value=projection_value)
+    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir(LINES_DIR) if
                         filename.endswith('.png')]
 
     return lines_images
 
 def preprocess_image(image_path, image_name):
     # Placeholder: Preprocess the image and return the preprocessed image path and list of image paths for lines
-    processed_image = "static/images/processed/preprocessed_image.png"
+    processed_image = os.path.join(PROCESSED_IMAGES, "preprocessed_image.png")
     # Directory where line images are stored
-    line_images_dir = "static/images/processed/lines"
     # os.makedirs(line_images_dir, exist_ok=True)
 
     clean_lines_dir()
 
-    image = remove_background(image_path, image_name, "../front/static/images/processed", "preprocessed_image.png")
+    image = remove_background(image_path, image_name, PROCESSED_IMAGES_LIB, "preprocessed_image.png")
 
-    crop_lines(image, "../front/static/images/processed/lines")
+    crop_lines(image, LINES_DIR_LIB)
 
     # Example: Assuming images are already created or you process them here
     # Get all image files from the directory
-    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir("../front/static/images/processed/lines") if
+    lines_images = [os.path.join(LINES_DIR, filename) for filename in os.listdir(LINES_DIR) if
                     filename.endswith('.png')]
     return processed_image, lines_images
 
-def extract_text(lines):
+def extract_text():
 
-    lines_dir = "../front/static/images/processed/lines"
-
-    images = load_images_from_directory(lines_dir)
+    images = load_images_from_directory(LINES_DIR_LIB)
 
     model = OCRModel(device)
 
@@ -103,8 +107,7 @@ def check_image_quality():
     # Handle user decision on image quality
     decision = request.json.get('decision')
     if decision == 'yes':
-        image_path = "../front/static/images"  # Example image path
-        preprocessed_image, lines = preprocess_image(image_path, "uploaded_image.jpg")
+        preprocessed_image, lines = preprocess_image(IMAGES_FOR_LIB, "uploaded_image.jpg")
         # {{url_for('static', preprocessed_image)}}
         return jsonify({"status": "preprocessed", "image": preprocessed_image, "lines": lines})
     return jsonify({"status": "redo"})
@@ -113,8 +116,7 @@ def check_image_quality():
 def check_preprocessing():
     decision = request.json.get('decision')
     if decision == 'yes':
-        lines = request.json.get('lines')
-        extracted_text = extract_text(lines)
+        extracted_text = extract_text()
         return jsonify({"status": "text_extracted", "text": extracted_text})
     return jsonify({"status": "redo"})
 
