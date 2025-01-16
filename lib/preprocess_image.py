@@ -27,7 +27,7 @@ def load_image_as_bytes(path, file_name):
 
 
 def apply_clean_full(image):
-    """Applies Gaussian blur, adaptive thresholding, and removes grid lines from an image."""
+    """Applies Gaussian blur, adaptive thresholding, removes grid lines, and removes caps from previous lines."""
 
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -37,35 +37,27 @@ def apply_clean_full(image):
 
     # Apply adaptive thresholding to binarize the image
     binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
 
-    # # Step 6: Detect vertical lines
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
-    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+    # Find contours of the binary image
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Step 7: Combine horizontal and vertical lines into one mask
-    grid_mask = cv2.add(horizontal_lines, vertical_lines)
-
-    # Step 8: Invert the grid mask
-    grid_removed = cv2.bitwise_not(grid_mask)
-
-    # Step 9: Remove the grid from the original binary image
-    cleaned_binary = cv2.bitwise_and(binary, binary, mask=grid_removed)
-
-    # Step 10: Remove small noise using contour filtering
-    contours, _ = cv2.findContours(cleaned_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Remove small caps above the text
     for contour in contours:
-        area = cv2.contourArea(contour)
-        if area < 10:  # Threshold for small noise (adjust based on your image)
-            cv2.drawContours(binary, [contour], -1, 0, -1)  # Remove the contour by filling it with black
+        # Get bounding box for each contour
+        x, y, w, h = cv2.boundingRect(contour)
 
-    # Step 11: Restore handwriting onto a white background
+        # Define a heuristic to detect caps (adjust thresholds as needed)
+        if h < 10 and w < 30 and y < gray.shape[0] // 2:
+            # Fill the detected cap region with white
+            cv2.rectangle(binary, (x, y), (x + w, y + h), 0, -1)
+
+    # Restore handwriting onto a white background
     handwriting_mask = binary > 0
     output = np.ones_like(image) * 255  # Create a white background
     output[handwriting_mask] = image[handwriting_mask]
 
     return output
+
 
 def apply_clean(image):
     """Applies Gaussian blur, adaptive thresholding, and removes grid lines from an image."""
@@ -144,7 +136,7 @@ def crop_horizontal_and_vertical(image):
     return image  # If no handwriting is found, return the original image
 
 
-def crop_lines(image, output_path, padding=5, margin=10):
+def crop_lines(image, output_path, padding=5, margin=10, projection_value=0.1):
     """
     Crop the text lines from the given image, considering letter tails and caps,
     and add a white margin around each line, with additional processing to ignore
@@ -167,8 +159,7 @@ def crop_lines(image, output_path, padding=5, margin=10):
     # Apply horizontal projection to detect text lines
     projection = np.sum(inverted, axis=1)
 
-    # Threshold to detect significant text regions
-    threshold = np.max(projection) * 0.10  # 10% of the maximum projection value
+    threshold = np.max(projection) * projection_value  # 10% of the maximum projection value
     line_regions = projection > threshold
 
     # Detect line start and end indices

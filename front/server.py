@@ -4,8 +4,10 @@ import torch
 from flask import Flask, request, render_template, jsonify
 import os
 
+from lib.grammar_checker import GrammarChecker
 from lib.image2text_recognition import load_images_from_directory, OCRModel, process_batch
-from lib.preprocess_image import remove_background, crop_lines
+from lib.preprocess_image import remove_background, crop_lines, load_image_as_bytes
+from lib.spell_checker import SpellChecker
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(ROOT_DIR)
@@ -16,12 +18,25 @@ def clean_lines_dir(directory_path = "../front/static/images/processed/lines"):
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
 
+def crop_with_projection(projection_value):
+    clean_lines_dir()
+    line_images_dir = "static/images/processed/lines"
+
+    image = load_image_as_bytes("../front/static/images/processed", "preprocessed_image.png")
+    crop_lines(image, "../front/static/images/processed/lines", projection_value=projection_value)
+    lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir("../front/static/images/processed/lines") if
+                        filename.endswith('.png')]
+
+    return lines_images
+
 def preprocess_image(image_path, image_name):
     # Placeholder: Preprocess the image and return the preprocessed image path and list of image paths for lines
     processed_image = "static/images/processed/preprocessed_image.png"
     # Directory where line images are stored
     line_images_dir = "static/images/processed/lines"
     # os.makedirs(line_images_dir, exist_ok=True)
+
+    clean_lines_dir()
 
     image = remove_background(image_path, image_name, "../front/static/images/processed", "preprocessed_image.png")
 
@@ -31,7 +46,6 @@ def preprocess_image(image_path, image_name):
     # Get all image files from the directory
     lines_images = [os.path.join(line_images_dir, filename) for filename in os.listdir("../front/static/images/processed/lines") if
                     filename.endswith('.png')]
-
     return processed_image, lines_images
 
 def extract_text(lines):
@@ -48,12 +62,15 @@ def extract_text(lines):
     return generated_text
 
 def syntax_check(text):
-    # Placeholder: Perform syntax check and return two versions of the text
-    return text, text + " (syntactically fixed)"
+    speller = SpellChecker()
+    corrected_text = speller.correct(text)
+    return corrected_text
 
 def grammar_check(text):
-    # Placeholder: Perform grammar check and return two versions of the text
-    return text, text + " (grammatically fixed)"
+    grammar_checker = GrammarChecker(device, model_path="prithivida/grammar_error_correcter_v1")
+    corrected_text = grammar_checker.correct(text)
+
+    return corrected_text
 
 def verify_and_set_device(device_selected_text):
     global device
@@ -124,6 +141,23 @@ def check_grammar():
     text = request.json.get('text')
     grammar_fixed, fixed_version = grammar_check(text)
     return jsonify({"original": grammar_fixed, "fixed": fixed_version})
+
+@app.route('/check-syntax-and-grammar', methods=['POST'])
+def check_syntax_and_grammar():
+    text = request.json.get('text')
+
+    fixed_syntax_version = syntax_check(text)
+    fixed_grammar_version = grammar_check(fixed_syntax_version)
+
+    return jsonify({"syntaxFixed": fixed_syntax_version, "grammarFixed": fixed_grammar_version})
+
+@app.route('/crop_with_projection', methods=['POST'])
+def crop_projection():
+    projection = request.json.get('projectionValue')
+    lines = crop_with_projection(projection)
+    print(lines)
+    return jsonify({"lines": lines})
+
 
 if __name__ == '__main__':
     app.run(debug=True)

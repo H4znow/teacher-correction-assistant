@@ -28,7 +28,12 @@
             <img id="preprocessed-image" src="" alt="Preprocessed image">
 
             <!-- Container for dynamically loaded cropped line images -->
-            <h3>After cropping the preprocessed image on lines:</h3>
+            <h3>
+                After cropping the preprocessed image on lines:
+                <input type="number" id="projection-value" placeholder="Enter projection value" style="width: 150px; margin-left: 10px;" min="0" max="1" value="0.1" step="0.1" />
+                <span title="This value determines the intensity of the projection for cropping. Adjust if lines are not detected correctly.">❓</span>
+            </h3>
+            <button id="recrop-button" style="margin-bottom: 20px;">Recrop</button>
             <div id="lines-images" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
 
             <h3>If you are satisfied with the image processing we can continue to the extraction</h3>
@@ -80,8 +85,8 @@
                 </table>
             </div>
             <div>
-                <button id="back-preprocessing">Back to the extraction step!</button>
-                <button id="try-again" style="background: red">Start From the beginning!</button>
+                <button id="back-preprocessing">Back to the extraction step</button>
+                <button id="try-again" style="background: red">Start From the beginning</button>
             </div>
         </div>
     </div>

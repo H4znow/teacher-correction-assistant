@@ -1,5 +1,5 @@
 import torch
-import torch_xla.core.xla_model as xm
+# import torch_xla.core.xla_model as xm
 
 from .model import Model
 from transformers import T5Tokenizer, T5ForConditionalGeneration
@@ -73,7 +73,7 @@ class GrammarChecker(Model):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else xm.xla_device())
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Initialize the grammar checker
     # Initialize the grammar checker
     grammar_checker = GrammarChecker(device, model_path="prithivida/grammar_error_correcter_v1")

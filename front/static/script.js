@@ -38,6 +38,47 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // Event listener for the Recrop button
+    document.getElementById("recrop-button").addEventListener("click", () => {
+        const projectionValue = document.getElementById("projection-value").value;
+
+        // Validate projection value
+        if (!projectionValue || isNaN(projectionValue)) {
+            alert("Please enter a valid projection value.");
+            return;
+        }
+
+        fetch("/crop_with_projection", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectionValue: Number(projectionValue) }) // Send projection value to the server
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Replace the linesImagesDiv content with new cropped lines
+                linesImagesDiv.innerHTML = ""; // Clear previous images
+                const list = document.createElement("ol");
+
+                data.lines.forEach(lineImagePath => {
+                    let element = document.createElement("li");
+                    element.style.alignItems = "left";
+
+                    const img = document.createElement("img");
+                    img.src = lineImagePath;
+                    img.alt = "Detected line image";
+                    element.appendChild(img);
+                    list.appendChild(element);
+                });
+
+                linesImagesDiv.appendChild(list);
+            })
+            .catch(error => {
+                console.error("Error recropping the image:", error);
+                alert("An error occurred. Please try again.");
+            });
+    });
+
+
     document.getElementById("quality-no").addEventListener("click", () => {
         if (window.confirm("Do you want to retake the image?")) {
             // User pressed "Yes"
@@ -54,12 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
             location.reload(); // Reload page or update the UI as necessary
         }
     });
-
-    // Preprocessing buttons
-    // document.getElementById("preprocess-yes").addEventListener("click", () => {
-    //     // Get all cropped images for the lines
-    //
-    // });
 
     document.getElementById("preprocess-no").addEventListener("click", () => {
         if (window.confirm("Do you want to retake the image?")) {
@@ -116,11 +151,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         // Create a container for displaying images and extracted text
                         const textContainer = document.createElement("div");
                         textContainer.style.display = "flex";
-                        textContainer.style.flexDirection = "row";
+                        textContainer.style.flexWrap = "wrap";
                         textContainer.style.gap = "20px";
-                        let full_text = ""
+                        textContainer.style.justifyContent = "center";
 
-                        // Loop through the extracted text and the corresponding line images
+                        let full_text = "";
+
                         data.text.forEach((text, index) => {
                             const column = document.createElement("div");
                             column.style.display = "flex";
@@ -136,15 +172,17 @@ document.addEventListener("DOMContentLoaded", () => {
                             // Modifiable text box
                             const textBox = document.createElement("p");
                             textBox.innerHTML = text;  // Pre-fill with extracted text
+                            textBox.style.margin = "0"; // Remove the gap
                             column.appendChild(textBox);
 
                             textContainer.appendChild(column);
-                            full_text += text + " ";
+                            full_text += text + "\n";
                         });
 
-                        // Modifiable text box
+
+                        // Modifiable text box for full text
                         const fullTextBox = document.createElement("textarea");
-                        fullTextBox.value = full_text;  // Pre-fill with extracted text
+                        fullTextBox.value = full_text; // Pre-fill with extracted text
                         fullTextSection.appendChild(fullTextBox);
 
                         // Append the textContainer to the lines-images div
@@ -153,9 +191,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         // Show the text extraction section
                         preprocessSection.style.display = "none";
                         linesImagesDiv.style.display = "none";
-                        extractionSection.style.display = "block"
+                        extractionSection.style.display = "block";
                     }
                 });
+
             }
         })
         .catch((error) => {
@@ -170,35 +209,42 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("syntax-check").addEventListener("click", () => {
         const fullText = document.getElementById("fulltext-section").querySelector("textarea").value;
 
+        const submitButton = document.getElementById("syntax-check")
+
+        // Change the button text to "Extracting..." and disable it
+        submitButton.disabled = true;
+        submitButton.style.background = "lightgrey"
+
         // First, perform the syntax check
-        fetch("/check-syntax", {
+        fetch("/check-syntax-and-grammar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: fullText })
         })
         .then(response => response.json())
         .then(data => {
-            const syntaxFixed = data.fixed;
+            const syntaxFixed = data.syntaxFixed;
+            const grammarFixed = data.grammarFixed;
+            //
+            // // Then, perform the grammar check on the syntax-fixed version
+            // fetch("/check-grammar", {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({ text: syntaxFixed })
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     const grammarFixed = data.fixed;
 
-            // Then, perform the grammar check on the syntax-fixed version
-            fetch("/check-grammar", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: syntaxFixed })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const grammarFixed = data.fixed;
+            // Show both the syntax and grammar fixed versions
+            document.getElementById("check-original").textContent = fullText;
+            document.getElementById("check-syntax-fixed").textContent = syntaxFixed;
+            document.getElementById("check-grammar-fixed").textContent = grammarFixed;
 
-                // Show both the syntax and grammar fixed versions
-                document.getElementById("check-original").textContent = fullText;
-                document.getElementById("check-syntax-fixed").textContent = syntaxFixed;
-                document.getElementById("check-grammar-fixed").textContent = grammarFixed;
-
-                // Show the combined check section
-                extractionSection.style.display = "none";
-                checkSection.style.display = "block";
-            });
+            // Show the combined check section
+            extractionSection.style.display = "none";
+            checkSection.style.display = "block";
+            // });
         });
     });
     document.getElementById("back-preprocessing").addEventListener("click", () => {

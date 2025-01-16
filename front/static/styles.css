@@ -155,3 +155,31 @@ form .error-message {
     color: red;
     font-size: 0.9rem;
 }
+
+#lines-images,
+#text-section div {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping to new rows */
+    gap: 20px; /* Space between items */
+    justify-content: center; /* Center items in each row */
+}
+
+#text-section div > div {
+    width: calc(33% - 20px); /* Ensure 4 items per row with gap */
+    box-sizing: border-box;
+    text-align: center; /* Center text and images */
+}
+
+#text-section div img {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+div.column p {
+    margin: 0;
+    padding: 0;
+}
+
