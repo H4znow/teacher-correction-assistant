@@ -19,12 +19,19 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.status === "preprocessed") {
                 document.getElementById("preprocessed-image").src = data.image;
                 linesImagesDiv.innerHTML = "";  // Clear any previous images
+                const list = document.createElement("ol");
+
                 data.lines.forEach(lineImagePath => {
+                    let element = document.createElement("li");
+                    element.style.alignItems = "left"
+
                     const img = document.createElement("img");
                     img.src = lineImagePath;
                     img.alt = "Detected line image";
-                    linesImagesDiv.appendChild(img);
+                    element.appendChild(img);
+                    list.appendChild(element)
                 });
+                linesImagesDiv.appendChild(list)
                 imageSection.style.display = "none";
                 preprocessSection.style.display = "block";
             }
@@ -36,6 +43,9 @@ document.addEventListener("DOMContentLoaded", () => {
             // User pressed "Yes"
             location.reload(); // Reload page or update the UI as necessary
         }
+    });
+    document.getElementById("reload-image").addEventListener("click", () => {
+        location.reload(); // Reload page or update the UI as necessary
     });
 
     document.getElementById("try-again").addEventListener("click", () => {
@@ -80,12 +90,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     column.appendChild(originalImage);
 
                     // Modifiable text box
-                    const textBox = document.createElement("textarea");
-                    textBox.value = text;  // Pre-fill with extracted text
+                    const textBox = document.createElement("p");
+                    textBox.innerHTML = text;  // Pre-fill with extracted text
                     column.appendChild(textBox);
 
                     textContainer.appendChild(column);
-                    full_text += " " + text;
+                    full_text += text + " ";
                 });
 
                 // Modifiable text box
@@ -109,6 +119,43 @@ document.addEventListener("DOMContentLoaded", () => {
             // User pressed "Yes"
             location.reload(); // Reload page or update the UI as necessary
         }
+    });
+    document.getElementById("cut-no").addEventListener("click", () => {
+        if (window.confirm("Do you want to retake the image?")) {
+            // User pressed "Yes"
+            location.reload(); // Reload page or update the UI as necessary
+        }
+    });
+
+    const devicesForm = document.querySelector('form[action="/set-device"]');
+    const devicesDropdown = document.getElementById("devices");
+
+    devicesForm.addEventListener("submit", (event) => {
+        event.preventDefault(); // Prevent the form from submitting traditionally
+
+        const selectedDevice = devicesDropdown.value;
+
+        fetch("/set-device", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device: selectedDevice }),
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.status === false) {
+                // Show the error message to the user
+                alert(`Error: ${data.reason}`);
+
+                // Revert the dropdown selection to "CPU"
+                devicesDropdown.value = "audi"; // Assuming "audi" corresponds to "CPU"
+            }
+        })
+        .catch((error) => {
+            console.error("An error occurred:", error);
+            alert("An unexpected error occurred. Please try again.");
+            // Revert the dropdown selection to "CPU" in case of a failure
+            devicesDropdown.value = "audi";
+        });
     });
 
     // Syntax and Grammar check button
@@ -145,5 +192,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 checkSection.style.display = "block";
             });
         });
+    });
+    document.getElementById("back-preprocessing").addEventListener("click", () => {
+        checkSection.style.display = "none"; // Hide the check section
+        extractionSection.style.display = "block"; // Show the extraction section
     });
 });

@@ -19,6 +19,11 @@ h1 {
     color: #333;
 }
 
+h2 {
+    text-align: start;
+    color: #333;
+}
+
 #image-section, #preprocess-section, #text-section, #syntax-section, #grammar-section {
     margin: 20px 0;
     text-align: center;
@@ -34,6 +39,7 @@ img {
 button {
     margin: 10px;
     padding: 10px 20px;
+    width: 200px;
     background-color: #007bff;
     color: #fff;
     border: none;
@@ -57,6 +63,16 @@ textarea {
     font-size: 16px;
 }
 
+p {
+    width: 90%;
+    margin: 10px auto;
+    display: block;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 16px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -71,4 +87,71 @@ table th, table td {
 
 table th {
     background-color: #f4f4f9;
+}
+
+/* Styling the form container */
+form {
+    background-color: #f9f9f9; /* Light gray background */
+    padding: 20px;
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    max-width: 400px; /* Limit the form width */
+    margin: 20px auto; /* Center the form */
+    font-family: Arial, sans-serif; /* Modern font */
+}
+
+/* Styling the form title and label */
+form label {
+    font-size: 1rem;
+    color: #333; /* Darker text color */
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Styling the select dropdown */
+form select {
+    width: 100%; /* Full width dropdown */
+    padding: 10px;
+    font-size: 1rem;
+    color: #555; /* Grayish text */
+    border: 1px solid #ddd; /* Subtle border */
+    border-radius: 4px; /* Rounded corners */
+    background-color: #fff; /* White background */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1); /* Inner shadow for depth */
+    transition: border-color 0.2s ease-in-out; /* Smooth border color change */
+}
+
+/* Change border color on focus */
+form select:focus {
+    border-color: #007bff; /* Blue border */
+    outline: none;
+}
+
+/* Styling the submit button */
+form input[type="submit"] {
+    background-color: #007bff; /* Blue background */
+    color: white; /* White text */
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px; /* Rounded corners */
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out; /* Smooth hover effect */
+}
+
+/* Hover effect for the submit button */
+form input[type="submit"]:hover {
+    background-color: #0056b3; /* Darker blue */
+}
+
+/* Add some spacing between form elements */
+form select, form input[type="submit"] {
+    margin-top: 12px;
+}
+
+/* Styling for error messages */
+form .error-message {
+    margin-top: 10px;
+    color: red;
+    font-size: 0.9rem;
 }

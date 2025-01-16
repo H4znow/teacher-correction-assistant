@@ -1,11 +1,12 @@
-from flask import Flask, request, render_template, jsonify, url_for
+import torch
+from flask import Flask, request, render_template, jsonify
 import os
+# import torch_xla.core.xla_model as xm
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-# print(ROOT_DIR)
 os.chdir(ROOT_DIR)
 app = Flask(__name__)
-
+device = torch.device("cpu")
 
 def preprocess_image(image_path):
     # Placeholder: Preprocess the image and return the preprocessed image path and list of image paths for lines
@@ -34,6 +35,9 @@ def syntax_check(text):
 def grammar_check(text):
     # Placeholder: Perform grammar check and return two versions of the text
     return text, text + " (grammatically fixed)"
+
+def verify_device(device_selected : torch.device):
+    return True, "blah"
 
 @app.route('/')
 def index():
@@ -64,6 +68,24 @@ def check_syntax():
     text = request.json.get('text')
     syntax_fixed, fixed_version = syntax_check(text)
     return jsonify({"original": syntax_fixed, "fixed": fixed_version})
+
+@app.route('/set-device', methods=['POST'])
+def set_device():
+    selected_device_text = request.json.get('device')
+    if selected_device_text == "GPU":
+        selected_device = torch.device("cuda")
+    # elif selected_device_text == "TPU":
+    #     selected_device = xm.xla_device()
+    elif selected_device_text == "Metal":
+        selected_device = torch.device("mps")
+    else:
+        selected_device = torch.device("cpu")
+
+    status, reason = verify_device(selected_device)
+
+    if status:
+        device = selected_device
+    return jsonify({"status": status, "device": selected_device_text, "reason": reason})
 
 @app.route('/check-grammar', methods=['POST'])
 def check_grammar():
