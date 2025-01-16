@@ -3,6 +3,7 @@ import torch_xla.core.xla_model as xm
 
 from lib.ocr_model import OCRModel
 from lib.grammar_checker import GrammarChecker
+from lib.preprocess_image import crop_lines, remove_background
 from lib.spell_checker import SpellChecker
 from PIL import Image
 
@@ -10,8 +11,8 @@ from PIL import Image
 def load_images():
     # TODO: get the image here
     # I used fake images for test
-    image1 = Image.open("./test/data/ocr_img_1.jpg")
-    image2 = Image.open("./test/data/ocr_img_2.jpg")
+    image1 = Image.open("./test/ocr_data/ocr_img_1.jpg")
+    image2 = Image.open("./test/ocr_data/ocr_img_2.jpg")
     return [image1, image2]
 
 def image2text(images, device: torch.device):
@@ -22,6 +23,8 @@ def image2text(images, device: torch.device):
 
 def img_preprocessing(img):
     # TODO Add img preprocessing
+    # cropped_output = remove_background(args.input_folder, args.input_image, args.output_crop_folder, args.output_image)
+    # crop_lines(cropped_output, args.output_lines_folder)
     return img
 
 def check_first_step(device: torch.device):
@@ -46,7 +49,7 @@ extracted_text, answer = check_first_step(device=device)
 while answer == "n":
     extracted_text, answer = check_first_step(device=device)
 
-spell_checker = SpellChecker(device, model_path=spell_checker_path)
+spell_checker = SpellChecker()
 grammar_checker = GrammarChecker(device, model_path=grammar_checker_path)
 result = []
 
