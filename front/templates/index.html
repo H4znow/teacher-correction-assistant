@@ -37,13 +37,13 @@
                 <form action="/set-device">
                   <label for="devices">Choose the device to run models on:</label>
                   <select name="devices" id="devices">
-                    <option value="volvo">GPU</option>
-                    <option value="saab">TPU</option>
-                    <option value="opel">Metal</option>
-                    <option value="audi">CPU</option>
+                    <option value="cuda">GPU</option>
+                    <option value="tpu">TPU</option>
+                    <option value="mps">Metal</option>
+                    <option value="cpu">CPU</option>
                   </select>
                   <br>
-                  <input type="submit" id="preprocess-yes" value="Extract!">
+                  <input type="submit" value="Extract!">
 <!--                  <button id="syntax-check">Check Syntax and Grammar</button>-->
                 </form>
                 <button id="preprocess-no" style="background: red;">Retake the picture</button>

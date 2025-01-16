@@ -1,14 +1,51 @@
 import argparse
 import json
 import torch
-from torch.xpu import device
-from transformers import TrOCRProcessor
-from PIL import Image
 import os
-from transformers import VisionEncoderDecoderModel
 import logging
 
-from .utils import get_device
+# import torch_xla.core.xla_model as xm
+
+from PIL import Image, ImageFile
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+
+from lib.model import Model
+
+
+def get_device():
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")  # For Apple Silicon devices
+    else:
+        device = torch.device("cpu")
+    return device
+
+
+class OCRModel(Model):
+    def __init__(self, device: torch.device, model_path: str = "microsoft/trocr-base-handwritten"):
+        super().__init__("Image2Text")
+        self.device = device
+        self.processor = TrOCRProcessor.from_pretrained(model_path)
+        self.model = VisionEncoderDecoderModel.from_pretrained(model_path)
+        self.model = self.model.to(device=device)
+
+    def extract_text(self, image: ImageFile.ImageFile|list[ImageFile.ImageFile], max_tokens: int = 200) -> str:
+        """
+            Extract Text from image using model
+            :param image: an image or a list of image
+            :param max_tokens
+            :return the text extracted
+        """
+        images = None
+        if type(image) == ImageFile:
+            images = [image]
+        elif type(image) == list:
+            images = image
+        pixel_values = self.processor(images=images, return_tensors="pt").pixel_values.to(self.device)
+        generated_ids = self.model.generate(pixel_values, max_new_tokens=max_tokens).to(self.device)
+        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+        return generated_text
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 
@@ -30,18 +67,13 @@ def load_images_from_directory(directory):
 
     return images
 
-def process_batch(images, processor, model, device, batch_size):
+def process_batch(images, model, batch_size=4):
     # Split the images into smaller batches to avoid OOM errors
     batch_texts = []
     for i in range(0, len(images), batch_size):
         batch_images = images[i:i + batch_size]
+        generated_text = model.extract_text(batch_images)
 
-        # Prepare pixel values and move to the correct device
-        pixel_values = processor(images=batch_images, return_tensors="pt").pixel_values.to(device)
-
-        # Generate text
-        generated_ids = model.generate(pixel_values, max_new_tokens=2000)
-        generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)
         batch_texts.extend(generated_text)
 
     return batch_texts
@@ -63,15 +95,11 @@ def main():
         device = get_device()
     else:
         device = torch.device(args.device)
-    # Load processor and model
-    processor = TrOCRProcessor.from_pretrained(args.model_name)
 
-    model = VisionEncoderDecoderModel.from_pretrained(
-        args.model_name,
-    ).to(device)
+    model = OCRModel(device, args.model_name)
 
     # Process images in batches
-    generated_text = process_batch(images, processor, model, device, args.batch_size)
+    generated_text = process_batch(images, model, args.batch_size)
 
     print(json.dumps(generated_text, ensure_ascii=False, indent=2))  # JSON formatted output
     return generated_text

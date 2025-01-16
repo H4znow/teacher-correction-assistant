@@ -5,13 +5,18 @@ import time
 import argparse
 from queue import Queue
 
-import torch
 from rouge import Rouge
 from subprocess import Popen, PIPE
-import subprocess as sp
 from threading import Thread
-from .utils import get_free_gpu_memory
 
+import subprocess as sp
+
+
+def get_free_gpu_memory():
+    command = "nvidia-smi --query-gpu=memory.free --format=csv"
+    memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+    # memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+    return memory_free_info
 
 # Function to copy images to a separate directory
 def copy_images_to_directory(test_file, source_dir, target_dir):
