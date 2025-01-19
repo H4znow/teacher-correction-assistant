@@ -1,8 +1,12 @@
+import os
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 import torch
 
 class GrammarModel:
     def __init__(self, quantization: str = "default", model_path: str = None, quantized_model_int8_path: str = None):
+        # Resolve base path relative to this file
+        self.base_path = os.path.dirname(os.path.abspath(__file__))  # Get the directory of this script
+
         # Initialize tokenizer
         self.tokenizer = T5Tokenizer.from_pretrained(model_path if model_path else "t5-small")
 
@@ -13,7 +17,7 @@ class GrammarModel:
             self.model_name = "Custom Grammar Model"
         elif quantized_model_int8_path or quantization == "int8":
             print("Loading quantized model [int8]...")
-            path = quantized_model_int8_path or "./models/quantized_grammar_checker_int8.pth"
+            path = quantized_model_int8_path or os.path.join(self.base_path,"..", "..", "models", "quantized_grammar_checker_int8.pth")
             try:
                 self.model = torch.load(path)
                 self.model.eval()
@@ -22,11 +26,11 @@ class GrammarModel:
                 raise ValueError(f"Quantized model not found at {path}")
         elif quantization == "float16":
             print("Loading prithivida/grammar_error_correcter_v1 [quantized into float16] model...")
-            self.model = T5ForConditionalGeneration.from_pretrained("./models/prithivida_grammar_error_correcter_v1_fp16")
+            self.model = T5ForConditionalGeneration.from_pretrained(os.path.join(self.base_path, "..", "..","models", "prithivida_grammar_error_correcter_v1_fp16"))
             self.model_name = "Quantized Grammar Model [float16]"
         else:
             print("Loading default prithivida/grammar_error_correcter_v1 model...")
-            self.model = T5ForConditionalGeneration.from_pretrained("./models/prithivida_grammar_error_correcter_v1")
+            self.model = T5ForConditionalGeneration.from_pretrained(os.path.join(self.base_path, "..", "..","models", "prithivida_grammar_error_correcter_v1"))
             self.model_name = "Default Grammar Model"
 
     def correct(self, text: str):
@@ -51,9 +55,11 @@ class GrammarModel:
         return self.model_name
 
     def get_model(self):
+        print("Model:", self.model)
         return self.model
 
     def set_model(self, model):
+        print("Model set. New model:", model)
         self.model = model
 
     def get_tokenizer(self):
@@ -73,31 +79,5 @@ class GrammarModel:
         except Exception as e:
             print(f"Quantization failed: {e}")
 
-if __name__ == "__main__":
-    # Initialize the grammar checker
-    grammar_checker = GrammarModel(quantization="int8")
-
-    # Print the summary of the model
-    print(grammar_checker.summary())
-
-    # Example input text
-    influent_sentences = [
-        "He are moving here.",
-        "I am doing fine. How is you?",
-        "How is they?",
-        "Matt like fish",
-        "the collection of letters was original used by the ancient Romans",
-        "We enjoys horror movies",
-        "Anna and Mike is going skiing",
-        "I walk to the store and I bought milk",
-        " We all eat the fish and then made dessert",
-        "I will eat fish for dinner and drink milk",
-        "what be the reason for everyone leave the company",
-    ]   
-
-    # Perform grammar correction
-    for input_text in influent_sentences:
-        corrected_text = grammar_checker.correct(input_text)
-        print("Original:", input_text)
-        print("Corrected:", corrected_text)
-        print("----------\n")
+    def load_state_dict(self, state_dict):
+        self.model.load_state_dict(state_dict)
